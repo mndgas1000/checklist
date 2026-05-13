@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklist Moto</title>
+
+<style>
+
+body{
+font-family:Arial, sans-serif;
+background:#f2f2f2;
+padding:15px;
+max-width:500px;
+margin:auto;
+}
+
+h2{text-align:center}
+
+/* INPUTS */
+
+input, textarea{
+width:100%;
+padding:12px;
+margin-bottom:12px;
+border-radius:8px;
+border:1px solid #ccc;
+font-size:16px;
+}
+
+textarea{height:100px;resize:none}
+
+/* ALERTAS */
+
+.alerta{
+display:none;
+padding:14px;
+border-radius:10px;
+font-weight:bold;
+text-align:center;
+margin-bottom:12px;
+font-size:16px;
+}
+
+.verde{background:#2ecc71;color:white}
+.laranja{background:#ff9800;color:white}
+.vermelho{background:#e74c3c;color:white}
+
+/* PERGUNTA ÓLEO */
+
+.pergunta{
+display:none;
+background:white;
+padding:14px;
+border-radius:12px;
+margin-bottom:12px;
+text-align:center;
+font-weight:bold;
+border:2px solid #e74c3c;
+}
+
+/* BOTÕES */
+
+.btn{
+width:100%;
+padding:14px;
+border:none;
+border-radius:12px;
+font-size:16px;
+margin-top:10px;
+}
+
+.sim{background:#2ecc71;color:white}
+.nao{background:#e74c3c;color:white}
+.salvar{background:#27ae60;color:white;font-size:18px}
+
+.simAtivo{box-shadow:0 0 0 4px rgba(46,204,113,0.4);}
+.naoAtivo{box-shadow:0 0 0 4px rgba(231,76,60,0.4);}
+
+/* NIVEL ÓLEO */
+
+.nivelBox{
+background:white;
+padding:14px;
+border-radius:12px;
+margin-bottom:12px;
+font-weight:bold;
+}
+
+.nivelBtns{
+display:flex;
+gap:10px;
+margin-top:10px;
+}
+
+.btnNivel{
+flex:1;
+padding:12px;
+border-radius:10px;
+border:2px solid #ddd;
+background:white;
+font-weight:bold;
+}
+
+.normalAtivo{background:#2ecc71;color:white}
+.baixoAtivo{background:#ff9800;color:white}
+.altoAtivo{background:#e74c3c;color:white}
+
+/* ITENS */
+
+.item{
+background:#eeeeee;
+padding:12px;
+border-radius:10px;
+margin-bottom:12px;
+font-weight:bold;
+}
+
+.botoes{
+display:flex;
+gap:10px;
+margin-top:8px;
+}
+
+.bom,.ruim{
+flex:1;
+padding:12px;
+border-radius:10px;
+border:2px solid #ddd;
+font-weight:bold;
+}
+
+.bomAtivo{
+background:#2ecc71 !important;
+color:white !important;
+}
+
+.ruimAtivo{
+background:#e74c3c !important;
+color:white !important;
+}
+
+/* AVISO ENVIO */
+
+#avisoEnvio{
+position:fixed;
+bottom:20px;
+left:10px;
+right:10px;
+background:white;
+padding:16px;
+border-radius:12px;
+box-shadow:0 5px 20px rgba(0,0,0,0.2);
+z-index:9999;
+display:none;
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>CHECKLIST MOTO</h2>
+
+<input id="placa" placeholder="Placa da Moto (ABC1D23)" maxlength="7" oninput="formatarPlaca(this)">
+<input id="entregador" placeholder="Nome do Entregador">
+<input id="km" placeholder="KM Trip Atual" maxlength="4" inputmode="numeric" oninput="validarKM()">
+
+<div id="alertaKM" class="alerta"></div>
+
+<div id="pergunta" class="pergunta">
+O óleo foi trocado?
+<button id="btnSim" class="btn sim" onclick="respostaSim()">SIM</button>
+<button id="btnNao" class="btn nao" onclick="respostaNao()">NÃO</button>
+</div>
+
+<div class="nivelBox" id="nivelBox">
+Nível do Óleo:
+<div class="nivelBtns">
+<button class="btnNivel" onclick="nivelNormal(this)">Normal</button>
+<button class="btnNivel" onclick="nivelBaixo(this)">Baixo</button>
+<button class="btnNivel" onclick="nivelAlto(this)">Alto</button>
+</div>
+</div>
+
+<div id="alertaNivel" class="alerta"></div>
+
+<div id="itens"></div>
+
+<textarea id="obs" placeholder="Observação (máximo 500 caracteres)" maxlength="500"></textarea>
+
+<button class="btn salvar" onclick="enviar()">SALVAR</button>
+
+<!-- AVISO COM BOTÃO -->
+<div id="avisoEnvio">
+<div style="font-weight:bold;margin-bottom:20px">
+⛽ NÃO ESQUECER DE ABASTECER A MOTO
+🔗 ESTICAR CORRENTE TODA QUINTA FEIRA
+</div>
+
+<!-- TAG DO ÁUDIO -->
+<audio id="somAlerta" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+<button class="btn salvar" onclick="confirmarEnvio()">
+ENVIAR WHATSAPP
+</button>
+</div>
+
+<script>
+
+/* PLACA */
+function placaValida(placa){
+return /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(placa);
+}
+
+function formatarPlaca(campo){
+let v=campo.value.toUpperCase().replace(/[^A-Z0-9]/g,"");
+let l=v.replace(/[0-9]/g,"");
+let n=v.replace(/[A-Z]/g,"");
+let r="";
+r+=l.substring(0,3);
+if(n.length>0)r+=n.substring(0,1);
+if(l.length>3)r+=l.substring(3,4);
+if(n.length>1)r+=n.substring(1,3);
+campo.value=r;
+}
+
+let respostaOleo="";
+let nivelOleo="";
+let linkWhats="";
+
+/* KM */
+function validarKM(){
+let km=Number(document.getElementById("km").value);
+let alerta=document.getElementById("alertaKM");
+let pergunta=document.getElementById("pergunta");
+
+if(!km){alerta.style.display="none"; pergunta.style.display="none"; return;}
+
+if(km<990){
+alerta.style.display="block";
+alerta.className="alerta verde";
+alerta.innerHTML="🟢 ÓLEO OK";
+pergunta.style.display="none";
+return;
+}
+
+if(km>=990 && km<1000){
+alerta.style.display="block";
+alerta.className="alerta laranja";
+alerta.innerHTML="🟠 FALTAM MENOS DE 10 KM PARA TROCAR O ÓLEO";
+pergunta.style.display="none";
+return;
+}
+
+if(km>=1000){
+alerta.style.display="block";
+alerta.className="alerta vermelho";
+alerta.innerHTML="🔴 TROCAR ÓLEO URGENTE";
+pergunta.style.display="block";
+}
+}
+
+/* SIM NÃO */
+function respostaSim(){respostaOleo="SIM"; btnSim.classList.add("simAtivo"); btnNao.classList.remove("naoAtivo");}
+function respostaNao(){respostaOleo="NÃO"; btnNao.classList.add("naoAtivo"); btnSim.classList.remove("simAtivo");}
+
+/* NIVEL */
+function limparNivel(){
+document.querySelectorAll(".btnNivel").forEach(b=>b.classList.remove("normalAtivo","baixoAtivo","altoAtivo"));
+}
+
+function nivelNormal(btn){limparNivel(); btn.classList.add("normalAtivo"); nivelOleo="Normal"; alertaNivel.style.display="none";}
+function nivelBaixo(btn){limparNivel(); btn.classList.add("baixoAtivo"); nivelOleo="Baixo"; alertaNivel.style.display="block"; alertaNivel.className="alerta laranja"; alertaNivel.innerHTML="🟠 COMPLETAR ÓLEO";}
+function nivelAlto(btn){limparNivel(); btn.classList.add("altoAtivo"); nivelOleo="Alto"; alertaNivel.style.display="block"; alertaNivel.className="alerta vermelho"; alertaNivel.innerHTML="🔴 ÓLEO ACIMA DO NÍVEL DANIFICA O MOTOR";}
+
+/* ITENS */
+const lista=["Banco","Buzina","Embreagem","Farol Baixo","Farol Alto","Paralama","Retrovisor Direito","Retrovisor Esquerdo","Freio Dianteiro","Freio Traseiro","Luz de freio","Seta Dianteira Direita","Seta Dianteira Esquerda","Seta Traseira Direita","Seta Traseira Esquerda","Relação","Estribo","Pézinho","Pneu Dianteiro","Pneu Traseiro"];
+
+lista.forEach(item=>{
+itens.innerHTML+=`
+<div class="item">
+<span class="nomeItem">${item}</span>
+<div class="botoes">
+<button class="bom bomAtivo" onclick="marcarBom(this)">BOM</button>
+<button class="ruim" onclick="marcarRuim(this)">RUIM</button>
+</div>
+</div>`;
+});
+
+function marcarBom(btn){btn.classList.add("bomAtivo"); btn.nextElementSibling.classList.remove("ruimAtivo");}
+function marcarRuim(btn){btn.classList.add("ruimAtivo"); btn.previousElementSibling.classList.remove("bomAtivo");}
+
+/* ENVIAR */
+function enviar(){
+
+let placaVal=document.getElementById("placa").value.trim();
+let entregador=document.getElementById("entregador").value.trim();
+let km=document.getElementById("km").value.trim();
+
+if(!placaValida(placaVal)){document.getElementById("placa").focus();return;}
+if(!entregador){document.getElementById("entregador").focus();return;}
+if(!km){document.getElementById("km").focus();return;}
+if(!nivelOleo){nivelBox.scrollIntoView();return;}
+if(Number(km)>=1000 && respostaOleo===""){pergunta.scrollIntoView();return;}
+
+let texto="*CHECKLIST MOTO*%0A%0A"+
+"Placa: "+placaVal+
+"%0AEntregador: "+entregador+
+"%0AKM Trip: "+km+
+"%0ANível do Óleo: "+nivelOleo;
+
+if(Number(km)>=1000){
+texto+="%0AO óleo foi trocado? "+respostaOleo;
+}
+
+texto+="%0A%0A*ITENS CHECKLIST*%0A";
+
+document.querySelectorAll(".item").forEach(i=>{
+let nome=i.querySelector(".nomeItem").textContent;
+let status=i.querySelector(".ruimAtivo")?"👎🏼 RUIM":"👍🏼 BOM";
+texto+=nome+": "+status+"%0A";
+});
+
+let obs=document.getElementById("obs").value.trim();
+if(obs){texto+="%0AObservação: "+obs;}
+
+linkWhats="https://wa.me/5511993838843?text="+texto;
+
+/* DISPARA O SOM */
+let som = document.getElementById("somAlerta");
+som.play().catch(e => console.log("Erro som:", e));
+
+/* MOSTRA AVISO */
+document.getElementById("avisoEnvio").style.display="block";
+
+}
+
+/* CONFIRMAR ENVIO */
+function confirmarEnvio(){
+
+window.open(linkWhats,"_blank");
+
+document.getElementById("avisoEnvio").style.display="none";
+
+limparFormulario();
+
+}
+
+/* LIMPAR */
+function limparFormulario(){
+placa.value="";
+entregador.value="";
+km.value="";
+obs.value="";
+alertaKM.style.display="none";
+alertaNivel.style.display="none";
+pergunta.style.display="none";
+nivelOleo="";
+respostaOleo="";
+document.querySelectorAll(".btnNivel").forEach(b=>b.classList.remove("normalAtivo","baixoAtivo","altoAtivo"));
+document.querySelectorAll(".bom").forEach(b=>b.classList.add("bomAtivo"));
+document.querySelectorAll(".ruim").forEach(b=>b.classList.remove("ruimAtivo"));
+setTimeout(()=>placa.focus(),200);
+}
+
+</script>
+
+</body>
+</html>
